@@ -1,0 +1,278 @@
+---
+title: Telco customer churn
+author:
+  - name: Ketao Li
+    affiliation: York University
+    email:  liketao@yahoo.com
+  - name: Kush Halani
+    affiliation: York University
+    email:  kush.halani@ontariotechu.net
+  - name: Josue Romain
+    affiliation: York University
+    email:  josue.rolland.romain@gmail.com    
+  - name: Juan Peña
+    affiliation: York University
+    email:  jppena62@my.yorku.ca
+  - name: Priyanka Patil
+    affiliation: York University
+    email:  priyanka181994@gmail.com    
+abstract: >
+  An abstract of less than 150 words.
+
+output:
+  rticles::rjournal_article:
+    includes:
+      in_header: preamble.tex
+---
+
+
+```{r echo=FALSE, message=FALSE, warnings=FALSE}
+# load required libraries
+library(ggplot2) # plotting lib
+library(gridExtra) # arrange grids
+library(dplyr)  # data manipuation
+library(mice)  # data imputing
+library(corrplot) # correlation matrix plotting/printing
+library(pROC) # to measure model performance
+library(leaflet) # maps
+library(RColorBrewer) # color palettes
+library(VIM) # missing value analysis 
+library(lattice) # another data plotting library
+library(mapview) # saves map objects as file
+library(png) # deals with png file measurements
+library(knitr) #
+library(party) # classification tree
+library(klaR) # naive bayes
+library(xtable) # tabular data formatting 
+library(caret) # predictive models
+
+# Clean all variables that might be left by other script to avoid collusion
+rm(list=ls(all=TRUE))
+# set xtable properties for the project
+options(xtable.floating = TRUE)
+options(xtable.timestamp = "")
+options(xtable.comment = FALSE)
+
+# pick palettes
+mainPalette = brewer.pal(8,"Dark2")
+# set a sample size
+SampleSize = 3000
+```
+
+```{r global_options, include=FALSE}
+# make the images flow nicely
+knitr::opts_chunk$set(fig.pos = 'H')
+```
+
+
+## Background
+
+In an industry as competitive as Telecom, leading companies know that the key to success is not just about acquiring new customers, but rather, retaining existing ones. But how do you know which customers are at risk and why, and which negative experiences and interactions have the biggest impact on churn across touchpoints and channels over time
+
+
+## Objective
+
+The objective of this research is to find a supervised, binary classification model that would provide accurate forecast of telco customer churn.
+
+# Data Analysis
+
+The data set we are going to use for our research contains  customer’s attributes. There are over 7044 records. It has been sourced from [Kaggle](https://www.kaggle.com/blastchar/telco-customer-churn)
+
+
+## Data Dictionary
+
+
+
+Column Name            | Column Description  
+-----------------------| ------------------- 
+customerID             | Customer ID 
+gender                 | Whether the customer is a male or a female
+SeniorCitizen          | Whether the customer is a senior citizen or not (1, 0)
+Partner                | Whether the customer has a partner or not (Yes, No)
+Dependents             | Whether the customer has dependents or not (Yes, No)
+tenure                 | Number of months the customer has stayed with the company
+PhoneService           | Whether the customer has a phone service or not (Yes, No)
+MultipleLines          | Whether the customer has multiple lines or not (Yes, No, No phone service)
+InternetService        | Customer’s internet service provider (DSL, Fiber optic, No)
+OnlineSecurity         | Whether the customer has online security or not (Yes, No, No internet service)
+OnlineBackup           | Whether the customer has online backup or not (Yes, No, No internet service)
+DeviceProtection       | Whether the customer has device protection or not (Yes, No, No internet service)
+TechSupport            | Whether the customer has tech support or not (Yes, No, No internet service)
+StreamingTV            | Whether the customer has streaming TV or not (Yes, No, No internet service)
+StreamingMovies        | Whether the customer has streaming movies or not (Yes, No, No internet service)
+Contract               | The contract term of the customer (Month-to-month, One year, Two year)
+PaperlessBilling       | Whether the customer has paperless billing or not (Yes, No)
+PaymentMethod          | The customer’s payment method (Electronic check, Mailed check, Bank transfer (automatic), Credit card (automatic))
+MonthlyCharges         | The amount charged to the customer monthly
+TotalCharges           | The total amount charged to the customer
+Churn                  | Whether the customer churned or not (Yes or No)
+
+
+## Data Exploration
+
+Let's take a close look at the data set.
+
+```{r message=FALSE, warning=FALSE}
+customerData = read.csv("../data/WA_Fn-UseC_-Telco-Customer-Churn.csv", header = TRUE, na.strings = c("NA","","#NA"),sep=",")
+
+```
+  
+
+To have the full picture of the data let's print the data summary and sample.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE, results='asis'}
+print(xtable(summary(customerData[,1:8])), include.rownames = FALSE, scalebox=.7)
+print(xtable(summary(customerData[,9:16])), include.rownames = FALSE, scalebox=.7)
+print(xtable(summary(customerData[,17:21]), caption = "\\tt telco customer churn data Summary", 
+             label = "data_head"), include.rownames = FALSE, scalebox=.7)
+```
+\newpage
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE, results='asis'}
+print(xtable(customerData[1:10,1:12]), scalebox=.6)
+print (xtable(customerData[1:10,13:21],
+  caption = "\\tt telco customer churn data", label = "data_head"), include.rownames = F,
+  scalebox = .6)
+```
+
+```{r}
+#DATA EXPLORATION
+
+#To see the names of the rows in the dataset
+names(customerData)
+
+#Display the dataset structure and sumary
+str(customerData)
+
+#Display first rows of the dataset
+head(customerData)
+
+#To select just the continuous variables and summarise it
+library(dplyr)
+continues <- select_if(customerData, is.numeric)
+#Sumarize the variables to find NA's and outliers
+summary(continues)
+
+#Display the factor columns and summarise it
+factorColumns <- select_if(customerData, is.factor)
+summary(factorColumns)
+```
+
+#Make a chart for each factor type column.
+
+```{r test1,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test1 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=gender)) +
+                        geom_bar()
+
+```
+
+```{r test2,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test2 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=Partner)) +
+        geom_bar()
+```
+
+```{r test3,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test3 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=Dependents)) +
+        geom_bar()
+```
+
+```{r test4,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test4 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=PhoneService)) +
+        geom_bar()
+```
+
+```{r test5,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test5 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=MultipleLines)) +
+        geom_bar()
+```
+
+```{r test6,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test6 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=InternetService)) +
+        geom_bar()
+```
+
+```{r test7,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test7 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=OnlineSecurity)) +
+        geom_bar()
+```
+
+
+
+```{r test8,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test8 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=OnlineBackup)) +
+        geom_bar()
+```
+
+
+```{r test9,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test9 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=DeviceProtection)) +
+        geom_bar()
+```
+
+
+```{r test10,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test10 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=TechSupport)) +
+        geom_bar()
+```
+
+
+```{r test11,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test11 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=StreamingTV)) +
+        geom_bar()
+```
+
+
+```{r test12,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test12 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=StreamingMovies)) +
+        geom_bar()
+```
+
+```{r test13,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test13 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=Contract)) +
+        geom_bar()
+```
+
+
+```{r test14,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test14 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=PaperlessBilling)) +
+        geom_bar()
+```
+
+
+```{r test15,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test15 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=PaymentMethod)) +
+        geom_bar()
+```
+
+
+```{r test16,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test16 ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(x=Churn)) +
+        geom_bar()
+```
+
+#As we can see in the continues' summary, there are 11 NA's in the Totalcharges column and some
+#outliers in Monthlycharges and TotalCharges.
+# Let's take a look of those columns in a graph to better understanding
+
+```{r test17,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test17 ", out.width="1.1\\linewidth"}
+ggplot(continues, aes(x=MonthlyCharges)) +
+        geom_density(alpha= .2, fill="#FF6666")
+```
+
+#There is no normal distribution in Monthlycharges
+
+#Let's see now Totalchrges
+```{r test18,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test18 ", out.width="1.1\\linewidth"}
+ggplot(continues, aes(x=TotalCharges)) +
+        geom_density(alpha= .2, fill="#FF6666")
+```
+
+#Can we make a hypothesis about the relation of charges total and monthly with the client churn?
+```
+
+
+
+## Summary
+
+This file is only a basic article template. For full details of _The R Journal_ style and information on how to prepare your article for submission, see the [Instructions for Authors](https://journal.r-project.org/share/author-guide.pdf).
+
+\bibliography{RJreferences}
