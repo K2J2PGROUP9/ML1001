@@ -1,0 +1,685 @@
+% !TeX root = RJwrapper.tex
+\title{Telco customer churn}
+\author{by Ketao Li, Kush Halani, Josue Romain, Juan Peña, Priyanka Patil}
+
+\maketitle
+
+\abstract{%
+An abstract of less than 150 words.
+}
+
+\hypertarget{background}{%
+\subsection{Background}\label{background}}
+
+In an industry as competitive as Telecom, leading companies know that
+the key to success is not just about acquiring new customers, but
+rather, retaining existing ones. But how do you know which customers are
+at risk and why, and which negative experiences and interactions have
+the biggest impact on churn across touchpoints and channels over time
+
+\hypertarget{objective}{%
+\subsection{Objective}\label{objective}}
+
+The objective of this research is to find a supervised, binary
+classification model that would provide accurate forecast of telco
+customer churn.
+
+\hypertarget{data-analysis}{%
+\section{Data Analysis}\label{data-analysis}}
+
+The data set we are going to use for our research contains customer's
+attributes. There are over 7044 records. It has been sourced from
+\href{https://www.kaggle.com/blastchar/telco-customer-churn}{Kaggle}
+
+\hypertarget{data-dictionary}{%
+\subsection{Data Dictionary}\label{data-dictionary}}
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule
+\begin{minipage}[b]{0.52\columnwidth}\raggedright
+Column Name\strut
+\end{minipage} & \begin{minipage}[b]{0.43\columnwidth}\raggedright
+Column Description\strut
+\end{minipage}\tabularnewline
+\midrule
+\endhead
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+customerID\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Customer ID\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+gender\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer is a male or a female\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+SeniorCitizen\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer is a senior citizen or not (1, 0)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+Partner\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has a partner or not (Yes, No)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+Dependents\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has dependents or not (Yes, No)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+tenure\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Number of months the customer has stayed with the company\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+PhoneService\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has a phone service or not (Yes, No)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+MultipleLines\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has multiple lines or not (Yes, No, No phone
+service)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+InternetService\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Customer's internet service provider (DSL, Fiber optic, No)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+OnlineSecurity\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has online security or not (Yes, No, No internet
+service)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+OnlineBackup\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has online backup or not (Yes, No, No internet
+service)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+DeviceProtection\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has device protection or not (Yes, No, No internet
+service)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+TechSupport\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has tech support or not (Yes, No, No internet
+service)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+StreamingTV\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has streaming TV or not (Yes, No, No internet
+service)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+StreamingMovies\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has streaming movies or not (Yes, No, No internet
+service)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+Contract\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+The contract term of the customer (Month-to-month, One year, Two
+year)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+PaperlessBilling\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer has paperless billing or not (Yes, No)\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+PaymentMethod\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+The customer's payment method (Electronic check, Mailed check, Bank
+transfer (automatic), Credit card (automatic))\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+MonthlyCharges\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+The amount charged to the customer monthly\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+TotalCharges\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+The total amount charged to the customer\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.52\columnwidth}\raggedright
+Churn\strut
+\end{minipage} & \begin{minipage}[t]{0.43\columnwidth}\raggedright
+Whether the customer churned or not (Yes or No)\strut
+\end{minipage}\tabularnewline
+\bottomrule
+\end{longtable}
+
+\hypertarget{data-exploration}{%
+\subsection{Data Exploration}\label{data-exploration}}
+
+Let's take a close look at the data set.
+
+\begin{Schunk}
+\begin{Sinput}
+customerData = read.csv("../data/WA_Fn-UseC_-Telco-Customer-Churn.csv", header = TRUE, na.strings = c("NA","","#NA"),sep=",")
+\end{Sinput}
+\end{Schunk}
+
+To have the full picture of the data let's print the data summary and
+sample.
+
+\begin{table}[ht]
+\centering
+\scalebox{0.7}{
+\begin{tabular}{llllllll}
+  \hline
+     customerID &    gender & SeniorCitizen & Partner & Dependents &     tenure & PhoneService &          MultipleLines \\ 
+  \hline
+0002-ORFBO:   1   & Female:3488   & Min.   :0.0000   & No :3641   & No :4933   & Min.   : 0.00   & No : 682   & No              :3390   \\ 
+  0003-MKNFE:   1   & Male  :3555   & 1st Qu.:0.0000   & Yes:3402   & Yes:2110   & 1st Qu.: 9.00   & Yes:6361   & No phone service: 682   \\ 
+  0004-TLHLJ:   1   &  & Median :0.0000   &  &  & Median :29.00   &  & Yes             :2971   \\ 
+  0011-IGKFF:   1   &  & Mean   :0.1621   &  &  & Mean   :32.37   &  &  \\ 
+  0013-EXCHZ:   1   &  & 3rd Qu.:0.0000   &  &  & 3rd Qu.:55.00   &  &  \\ 
+  0013-MHZWF:   1   &  & Max.   :1.0000   &  &  & Max.   :72.00   &  &  \\ 
+  (Other)   :7037   &  &  &  &  &  &  &  \\ 
+   \hline
+\end{tabular}
+}
+\end{table}
+\begin{table}[ht]
+\centering
+\scalebox{0.7}{
+\begin{tabular}{llllllll}
+  \hline
+   InternetService &             OnlineSecurity &              OnlineBackup &            DeviceProtection &              TechSupport &              StreamingTV &            StreamingMovies &           Contract \\ 
+  \hline
+DSL        :2421   & No                 :3498   & No                 :3088   & No                 :3095   & No                 :3473   & No                 :2810   & No                 :2785   & Month-to-month:3875   \\ 
+  Fiber optic:3096   & No internet service:1526   & No internet service:1526   & No internet service:1526   & No internet service:1526   & No internet service:1526   & No internet service:1526   & One year      :1473   \\ 
+  No         :1526   & Yes                :2019   & Yes                :2429   & Yes                :2422   & Yes                :2044   & Yes                :2707   & Yes                :2732   & Two year      :1695   \\ 
+   \hline
+\end{tabular}
+}
+\end{table}
+\begin{table}[ht]
+\centering
+\scalebox{0.7}{
+\begin{tabular}{lllll}
+  \hline
+PaperlessBilling &                   PaymentMethod & MonthlyCharges &  TotalCharges & Churn \\ 
+  \hline
+No :2872   & Bank transfer (automatic):1544   & Min.   : 18.25   & Min.   :  18.8   & No :5174   \\ 
+  Yes:4171   & Credit card (automatic)  :1522   & 1st Qu.: 35.50   & 1st Qu.: 401.4   & Yes:1869   \\ 
+   & Electronic check         :2365   & Median : 70.35   & Median :1397.5   &  \\ 
+   & Mailed check             :1612   & Mean   : 64.76   & Mean   :2283.3   &  \\ 
+   &  & 3rd Qu.: 89.85   & 3rd Qu.:3794.7   &  \\ 
+   &  & Max.   :118.75   & Max.   :8684.8   &  \\ 
+   &  &  & NA's   :11   &  \\ 
+   \hline
+\end{tabular}
+}
+\caption{\tt telco customer churn data Summary} 
+\label{data_head}
+\end{table}
+
+\newpage
+\begin{table}[ht]
+\centering
+\scalebox{0.6}{
+\begin{tabular}{rllrllrllllll}
+  \hline
+ & customerID & gender & SeniorCitizen & Partner & Dependents & tenure & PhoneService & MultipleLines & InternetService & OnlineSecurity & OnlineBackup & DeviceProtection \\ 
+  \hline
+1 & 7590-VHVEG & Female &   0 & Yes & No &   1 & No & No phone service & DSL & No & Yes & No \\ 
+  2 & 5575-GNVDE & Male &   0 & No & No &  34 & Yes & No & DSL & Yes & No & Yes \\ 
+  3 & 3668-QPYBK & Male &   0 & No & No &   2 & Yes & No & DSL & Yes & Yes & No \\ 
+  4 & 7795-CFOCW & Male &   0 & No & No &  45 & No & No phone service & DSL & Yes & No & Yes \\ 
+  5 & 9237-HQITU & Female &   0 & No & No &   2 & Yes & No & Fiber optic & No & No & No \\ 
+  6 & 9305-CDSKC & Female &   0 & No & No &   8 & Yes & Yes & Fiber optic & No & No & Yes \\ 
+  7 & 1452-KIOVK & Male &   0 & No & Yes &  22 & Yes & Yes & Fiber optic & No & Yes & No \\ 
+  8 & 6713-OKOMC & Female &   0 & No & No &  10 & No & No phone service & DSL & Yes & No & No \\ 
+  9 & 7892-POOKP & Female &   0 & Yes & No &  28 & Yes & Yes & Fiber optic & No & No & Yes \\ 
+  10 & 6388-TABGU & Male &   0 & No & Yes &  62 & Yes & No & DSL & Yes & Yes & No \\ 
+   \hline
+\end{tabular}
+}
+\end{table}
+\begin{table}[ht]
+\centering
+\scalebox{0.6}{
+\begin{tabular}{llllllrrl}
+  \hline
+TechSupport & StreamingTV & StreamingMovies & Contract & PaperlessBilling & PaymentMethod & MonthlyCharges & TotalCharges & Churn \\ 
+  \hline
+No & No & No & Month-to-month & Yes & Electronic check & 29.85 & 29.85 & No \\ 
+  No & No & No & One year & No & Mailed check & 56.95 & 1889.50 & No \\ 
+  No & No & No & Month-to-month & Yes & Mailed check & 53.85 & 108.15 & Yes \\ 
+  Yes & No & No & One year & No & Bank transfer (automatic) & 42.30 & 1840.75 & No \\ 
+  No & No & No & Month-to-month & Yes & Electronic check & 70.70 & 151.65 & Yes \\ 
+  No & Yes & Yes & Month-to-month & Yes & Electronic check & 99.65 & 820.50 & Yes \\ 
+  No & Yes & No & Month-to-month & Yes & Credit card (automatic) & 89.10 & 1949.40 & No \\ 
+  No & No & No & Month-to-month & No & Mailed check & 29.75 & 301.90 & No \\ 
+  Yes & Yes & Yes & Month-to-month & Yes & Electronic check & 104.80 & 3046.05 & Yes \\ 
+  No & No & No & One year & No & Bank transfer (automatic) & 56.15 & 3487.95 & No \\ 
+   \hline
+\end{tabular}
+}
+\caption{\tt telco customer churn data} 
+\label{data_head}
+\end{table}
+
+\begin{Schunk}
+\begin{Sinput}
+#DATA EXPLORATION
+
+#To see the names of the rows in the dataset
+names(customerData)
+\end{Sinput}
+\begin{Soutput}
+#>  [1] "customerID"       "gender"           "SeniorCitizen"    "Partner"         
+#>  [5] "Dependents"       "tenure"           "PhoneService"     "MultipleLines"   
+#>  [9] "InternetService"  "OnlineSecurity"   "OnlineBackup"     "DeviceProtection"
+#> [13] "TechSupport"      "StreamingTV"      "StreamingMovies"  "Contract"        
+#> [17] "PaperlessBilling" "PaymentMethod"    "MonthlyCharges"   "TotalCharges"    
+#> [21] "Churn"
+\end{Soutput}
+\begin{Sinput}
+#Display the dataset structure and sumary
+str(customerData)
+\end{Sinput}
+\begin{Soutput}
+#> 'data.frame':    7043 obs. of  21 variables:
+#>  $ customerID      : Factor w/ 7043 levels "0002-ORFBO","0003-MKNFE",..: 5376 3963 2565 5536 6512 6552 1003 4771 5605 4535 ...
+#>  $ gender          : Factor w/ 2 levels "Female","Male": 1 2 2 2 1 1 2 1 1 2 ...
+#>  $ SeniorCitizen   : int  0 0 0 0 0 0 0 0 0 0 ...
+#>  $ Partner         : Factor w/ 2 levels "No","Yes": 2 1 1 1 1 1 1 1 2 1 ...
+#>  $ Dependents      : Factor w/ 2 levels "No","Yes": 1 1 1 1 1 1 2 1 1 2 ...
+#>  $ tenure          : int  1 34 2 45 2 8 22 10 28 62 ...
+#>  $ PhoneService    : Factor w/ 2 levels "No","Yes": 1 2 2 1 2 2 2 1 2 2 ...
+#>  $ MultipleLines   : Factor w/ 3 levels "No","No phone service",..: 2 1 1 2 1 3 3 2 3 1 ...
+#>  $ InternetService : Factor w/ 3 levels "DSL","Fiber optic",..: 1 1 1 1 2 2 2 1 2 1 ...
+#>  $ OnlineSecurity  : Factor w/ 3 levels "No","No internet service",..: 1 3 3 3 1 1 1 3 1 3 ...
+#>  $ OnlineBackup    : Factor w/ 3 levels "No","No internet service",..: 3 1 3 1 1 1 3 1 1 3 ...
+#>  $ DeviceProtection: Factor w/ 3 levels "No","No internet service",..: 1 3 1 3 1 3 1 1 3 1 ...
+#>  $ TechSupport     : Factor w/ 3 levels "No","No internet service",..: 1 1 1 3 1 1 1 1 3 1 ...
+#>  $ StreamingTV     : Factor w/ 3 levels "No","No internet service",..: 1 1 1 1 1 3 3 1 3 1 ...
+#>  $ StreamingMovies : Factor w/ 3 levels "No","No internet service",..: 1 1 1 1 1 3 1 1 3 1 ...
+#>  $ Contract        : Factor w/ 3 levels "Month-to-month",..: 1 2 1 2 1 1 1 1 1 2 ...
+#>  $ PaperlessBilling: Factor w/ 2 levels "No","Yes": 2 1 2 1 2 2 2 1 2 1 ...
+#>  $ PaymentMethod   : Factor w/ 4 levels "Bank transfer (automatic)",..: 3 4 4 1 3 3 2 4 3 1 ...
+#>  $ MonthlyCharges  : num  29.9 57 53.9 42.3 70.7 ...
+#>  $ TotalCharges    : num  29.9 1889.5 108.2 1840.8 151.7 ...
+#>  $ Churn           : Factor w/ 2 levels "No","Yes": 1 1 2 1 2 2 1 1 2 1 ...
+\end{Soutput}
+\begin{Sinput}
+#Display first rows of the dataset
+head(customerData)
+\end{Sinput}
+\begin{Soutput}
+#>   customerID gender SeniorCitizen Partner Dependents tenure PhoneService
+#> 1 7590-VHVEG Female             0     Yes         No      1           No
+#> 2 5575-GNVDE   Male             0      No         No     34          Yes
+#> 3 3668-QPYBK   Male             0      No         No      2          Yes
+#> 4 7795-CFOCW   Male             0      No         No     45           No
+#> 5 9237-HQITU Female             0      No         No      2          Yes
+#> 6 9305-CDSKC Female             0      No         No      8          Yes
+#>      MultipleLines InternetService OnlineSecurity OnlineBackup DeviceProtection
+#> 1 No phone service             DSL             No          Yes               No
+#> 2               No             DSL            Yes           No              Yes
+#> 3               No             DSL            Yes          Yes               No
+#> 4 No phone service             DSL            Yes           No              Yes
+#> 5               No     Fiber optic             No           No               No
+#> 6              Yes     Fiber optic             No           No              Yes
+#>   TechSupport StreamingTV StreamingMovies       Contract PaperlessBilling
+#> 1          No          No              No Month-to-month              Yes
+#> 2          No          No              No       One year               No
+#> 3          No          No              No Month-to-month              Yes
+#> 4         Yes          No              No       One year               No
+#> 5          No          No              No Month-to-month              Yes
+#> 6          No         Yes             Yes Month-to-month              Yes
+#>               PaymentMethod MonthlyCharges TotalCharges Churn
+#> 1          Electronic check          29.85        29.85    No
+#> 2              Mailed check          56.95      1889.50    No
+#> 3              Mailed check          53.85       108.15   Yes
+#> 4 Bank transfer (automatic)          42.30      1840.75    No
+#> 5          Electronic check          70.70       151.65   Yes
+#> 6          Electronic check          99.65       820.50   Yes
+\end{Soutput}
+\begin{Sinput}
+#To select just the continuous variables and summarise it
+library(dplyr)
+continues <- select_if(customerData, is.numeric)
+#Sumarize the variables to find NA's and outliers
+summary(continues)
+\end{Sinput}
+\begin{Soutput}
+#>  SeniorCitizen        tenure      MonthlyCharges    TotalCharges   
+#>  Min.   :0.0000   Min.   : 0.00   Min.   : 18.25   Min.   :  18.8  
+#>  1st Qu.:0.0000   1st Qu.: 9.00   1st Qu.: 35.50   1st Qu.: 401.4  
+#>  Median :0.0000   Median :29.00   Median : 70.35   Median :1397.5  
+#>  Mean   :0.1621   Mean   :32.37   Mean   : 64.76   Mean   :2283.3  
+#>  3rd Qu.:0.0000   3rd Qu.:55.00   3rd Qu.: 89.85   3rd Qu.:3794.7  
+#>  Max.   :1.0000   Max.   :72.00   Max.   :118.75   Max.   :8684.8  
+#>                                                    NA's   :11
+\end{Soutput}
+\begin{Sinput}
+#Display the factor columns and summarise it
+factorColumns <- select_if(customerData, is.factor)
+summary(factorColumns)
+\end{Sinput}
+\begin{Soutput}
+#>       customerID      gender     Partner    Dependents PhoneService
+#>  0002-ORFBO:   1   Female:3488   No :3641   No :4933   No : 682    
+#>  0003-MKNFE:   1   Male  :3555   Yes:3402   Yes:2110   Yes:6361    
+#>  0004-TLHLJ:   1                                                   
+#>  0011-IGKFF:   1                                                   
+#>  0013-EXCHZ:   1                                                   
+#>  0013-MHZWF:   1                                                   
+#>  (Other)   :7037                                                   
+#>           MultipleLines     InternetService             OnlineSecurity
+#>  No              :3390   DSL        :2421   No                 :3498  
+#>  No phone service: 682   Fiber optic:3096   No internet service:1526  
+#>  Yes             :2971   No         :1526   Yes                :2019  
+#>                                                                       
+#>                                                                       
+#>                                                                       
+#>                                                                       
+#>               OnlineBackup             DeviceProtection
+#>  No                 :3088   No                 :3095   
+#>  No internet service:1526   No internet service:1526   
+#>  Yes                :2429   Yes                :2422   
+#>                                                        
+#>                                                        
+#>                                                        
+#>                                                        
+#>               TechSupport                StreamingTV  
+#>  No                 :3473   No                 :2810  
+#>  No internet service:1526   No internet service:1526  
+#>  Yes                :2044   Yes                :2707  
+#>                                                       
+#>                                                       
+#>                                                       
+#>                                                       
+#>             StreamingMovies           Contract    PaperlessBilling
+#>  No                 :2785   Month-to-month:3875   No :2872        
+#>  No internet service:1526   One year      :1473   Yes:4171        
+#>  Yes                :2732   Two year      :1695                   
+#>                                                                   
+#>                                                                   
+#>                                                                   
+#>                                                                   
+#>                    PaymentMethod  Churn     
+#>  Bank transfer (automatic):1544   No :5174  
+#>  Credit card (automatic)  :1522   Yes:1869  
+#>  Electronic check         :2365             
+#>  Mailed check             :1612             
+#>                                             
+#>                                             
+#> 
+\end{Soutput}
+\end{Schunk}
+
+\#Make a chart for each factor type column.
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test1-1} 
+
+}
+
+\caption[Test1 ]{Test1 }\label{fig:test1}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test2-1} 
+
+}
+
+\caption[Test2 ]{Test2 }\label{fig:test2}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test3-1} 
+
+}
+
+\caption[Test3 ]{Test3 }\label{fig:test3}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test4-1} 
+
+}
+
+\caption[Test4 ]{Test4 }\label{fig:test4}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test5-1} 
+
+}
+
+\caption[Test5 ]{Test5 }\label{fig:test5}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test6-1} 
+
+}
+
+\caption[Test6 ]{Test6 }\label{fig:test6}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test7-1} 
+
+}
+
+\caption[Test7 ]{Test7 }\label{fig:test7}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test8-1} 
+
+}
+
+\caption[Test8 ]{Test8 }\label{fig:test8}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test9-1} 
+
+}
+
+\caption[Test9 ]{Test9 }\label{fig:test9}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test10-1} 
+
+}
+
+\caption[Test10 ]{Test10 }\label{fig:test10}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test11-1} 
+
+}
+
+\caption[Test11 ]{Test11 }\label{fig:test11}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test12-1} 
+
+}
+
+\caption[Test12 ]{Test12 }\label{fig:test12}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test13-1} 
+
+}
+
+\caption[Test13 ]{Test13 }\label{fig:test13}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test14-1} 
+
+}
+
+\caption[Test14 ]{Test14 }\label{fig:test14}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test15-1} 
+
+}
+
+\caption[Test15 ]{Test15 }\label{fig:test15}
+\end{figure}
+\end{Schunk}
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test16-1} 
+
+}
+
+\caption[Test16 ]{Test16 }\label{fig:test16}
+\end{figure}
+\end{Schunk}
+
+\#As we can see in the continues' summary, there are 11 NA's in the
+Totalcharges column and some \#outliers in Monthlycharges and
+TotalCharges. \# Let's take a look of those columns in a graph to better
+understanding
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test17-1} 
+
+}
+
+\caption[Test17 ]{Test17 }\label{fig:test17}
+\end{figure}
+\end{Schunk}
+
+\#There is no normal distribution in Monthlycharges
+
+\#Let's see now Totalchrges
+
+\begin{Schunk}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1.1\linewidth]{main_files/figure-latex/test18-1} 
+
+}
+
+\caption[Test18 ]{Test18 }\label{fig:test18}
+\end{figure}
+\end{Schunk}
+
+\#Can we make a hypothesis about the relation of charges total and
+monthly with the client churn? ```
+
+\hypertarget{summary}{%
+\subsection{Summary}\label{summary}}
+
+This file is only a basic article template. For full details of
+\emph{The R Journal} style and information on how to prepare your
+article for submission, see the
+\href{https://journal.r-project.org/share/author-guide.pdf}{Instructions
+for Authors}.
+
+\bibliography{RJreferences}
+
+
+\address{%
+Ketao Li\\
+York University\\
+\\
+}
+\href{mailto:liketao@yahoo.com}{\nolinkurl{liketao@yahoo.com}}
+
+\address{%
+Kush Halani\\
+York University\\
+\\
+}
+\href{mailto:kush.halani@ontariotechu.net}{\nolinkurl{kush.halani@ontariotechu.net}}
+
+\address{%
+Josue Romain\\
+York University\\
+\\
+}
+\href{mailto:josue.rolland.romain@gmail.com}{\nolinkurl{josue.rolland.romain@gmail.com}}
+
+\address{%
+Juan Peña\\
+York University\\
+\\
+}
+\href{mailto:jppena62@my.yorku.ca}{\nolinkurl{jppena62@my.yorku.ca}}
+
+\address{%
+Priyanka Patil\\
+York University\\
+\\
+}
+\href{mailto:priyanka181994@gmail.com}{\nolinkurl{priyanka181994@gmail.com}}
+
