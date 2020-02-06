@@ -267,12 +267,355 @@ ggplot(continues, aes(x=TotalCharges)) +
 ```
 
 #Can we make a hypothesis about the relation of charges total and monthly with the client churn?
+
+```{r echo=TRUE}
+customerData = customerData %>%filter(complete.cases(.)) 
+customerData = subset(customerData,select = -customerID)
+
 ```
 
 
+# Modeling and Evalutation
 
-## Summary
+Finally we have reached the stage where we can start training and evaluating classification models. At this point we have clear understanding of our data. We have gotten rid of the features that did not present much value. We have filled the gaps in our data set employing sophisticated imputation technique.
 
-This file is only a basic article template. For full details of _The R Journal_ style and information on how to prepare your article for submission, see the [Instructions for Authors](https://journal.r-project.org/share/author-guide.pdf).
+## Feature Selection
+
+
+Generally speaking feature evaluation methods can be separated into two groups: those that use the model information and those that do not. Clearly at this stage of our research the models are not ready. Thus we will be exploring the methods that do not require model.
+
+This group of the method could be spit further as follows:
+
+* wrapper methods that evaluate multiple models adding and/or removing predictors. These are some examples:
+  + recursive feature elimination
+  + genetic algorithms
+  + simulated annealing
+
+* filter methods which evaluate the relevance of the predictors outside of the predictive models. 
+
+
+Before we proceed any further let's ensure that all categorical values get converted back to the factors. This is useful for dimentiality reduction algorithms and model training.
+
+
+
+```{r}
+customerData = mutate(customerData,
+          gender = as.factor(unclass(gender)),
+          Partner = as.factor(unclass(Partner)), 
+          Dependents = as.factor(unclass(Dependents)),
+          PhoneService = as.factor(unclass(PhoneService)), 
+          MultipleLines = as.factor(unclass(MultipleLines)),
+          InternetService = as.factor(unclass(InternetService)),
+          OnlineSecurity = as.factor(unclass(OnlineSecurity)), 
+          OnlineBackup = as.factor(unclass(OnlineBackup)),
+          DeviceProtection = as.factor(unclass(DeviceProtection)), 
+          TechSupport = as.factor(unclass(TechSupport)),
+          StreamingTV = as.factor(unclass(StreamingTV)),
+          StreamingMovies = as.factor(unclass(StreamingMovies)), 
+          Contract = as.factor(unclass(Contract)),
+          PaperlessBilling = as.factor(unclass(PaperlessBilling)), 
+          PaymentMethod = as.factor(unclass(PaymentMethod)),          
+          Churn = as.factor(unclass(Churn)))
+```
+
+
+It is time to run feature selection algorithm.
+```{r}
+predictors = subset(customerData,select = -Churn)
+label = customerData[,20]
+
+# run the RFE algorithm
+rfePrediction = rfe(predictors, label, sizes=c(1:19), 
+                    rfeControl = rfeControl(functions=rfFuncs, method="cv", number=3))
+print(rfePrediction)
+```
+
+
+```{r plot_feature_selection,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Number of Predictors vs Accuracy", out.width="1.1\\linewidth"}
+plot(rfePrediction, type=c("g", "o"))
+```
+
+
+Figure \ref{fig:plot_feature_selection} illustrates that the accuracy practically flattens out when a number of predictors reaches 8. The accuracy improves a bit more when a number of features reaches 15 but the gain is negligible. Here is the list of features ordered by importance. We take first nine for model training.
+
+```{r echo=FALSE}
+print(predictors(rfePrediction))
+```
+
+```{r include=FALSE}
+len = length(predictors(rfePrediction))
+selectedPredictors =  predictors(rfePrediction)[1:ifelse(len < 8, len, 8)]
+print(selectedPredictors)
+# remove useless variables
+rm(label,predictors,rfePrediction,len)
+```
+
+### Data Upsampling
+
+There is one more step to make before we get to the model training. As shown in Figure \ref{fig:feature_distribution} our data set is unbalanced. This could cause model over-fitting. So let's split the data into the training and testing sets and up-sample the training set.
+```{r echo=TRUE}
+set.seed(1608)
+
+# keep only the selected features
+finalSample = customerData %>% dplyr::select(c(selectedPredictors,"Churn"));
+
+splitIdx = createDataPartition(finalSample$Churn, p=0.7, list = F)  # 70% training data
+trainData = finalSample[splitIdx, ]
+testData = finalSample[-splitIdx, ]
+
+set.seed(590045)
+columns = colnames(trainData)
+trainData = upSample(x = trainData[, columns[columns != "Churn"] ], 
+      y = trainData$Churn, list = F, yname = "Churn")
+
+rm(splitIdx, columns, finalSample)
+print(table(trainData$Churn))
+```
+
+As we can see now the training set is balanced.
+
+Thus we have prepared our training and test data sets. We have identified the most important features. We are ready to work on the prediction models.
+```{r include=FALSE}
+# seed for all models
+modelSeed = 4987
+# helper to compose training composition
+selectedPredictorsPlus = paste(selectedPredictors, collapse = " + ")
+```
+
+## Decision Tree Model
+
+Decision Tree algorithm is simple to understand, interpret and visualize. Effort required for data preparation is minimal. This is probably why the Decision Tree model tends to be the method of choice for predictive modeling of many.
+```{r echo=FALSE}
+set.seed(modelSeed)
+trainDataCopy = mutate(trainData, Churn = as.factor(ifelse(Churn==1, "no", "yes")))
+testDataCopy = mutate(testData, Churn = as.factor(ifelse(Churn==1, "no", "yes")))
+ctrl = trainControl(method="cv", number = 5, 
+    # Estimate class probabilities
+    classProbs = T,
+    # Evaluate performance using the following function
+    summaryFunction = twoClassSummary)
+
+decisionTreeModel = caret::train(as.formula(paste('Churn ~', selectedPredictorsPlus)), 
+   data = trainDataCopy, method = "ctree", metric="ROC", trControl = ctrl)
+
+pred.decisionTreeModel.prob = predict(decisionTreeModel, newdata = testDataCopy, type="prob")
+pred.decisionTreeModel.raw = predict(decisionTreeModel, newdata = testDataCopy )
+
+roc.decisionTreeModel = pROC::roc(testDataCopy$Churn, 
+                    as.vector(ifelse(pred.decisionTreeModel.prob[,"yes"] >0.5, 1,0)) )
+auc.decisionTreeModel = pROC::auc(roc.decisionTreeModel)
+
+decisionTreeModel
+```
+
+```{r}
+confusionMatrix(data = pred.decisionTreeModel.raw, testDataCopy$Churn)
+```
+```{r plot_decTree_ROC,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Classification Tree Model AUC and ROC Curve", out.width="1.1\\linewidth"}
+plot.roc(roc.decisionTreeModel, print.auc = T, auc.polygon = T, col = mainPalette[1] , print.thres = "best" )
+```
+```{r include=FALSE}
+rm(trainDataCopy,testDataCopy,ctrl)
+```
+
+
+## Naive Bayes Model
+
+Naïve Bayes classification is a kind of simple probabilistic classification methods based on Bayes’ theorem with the assumption of independence between features. 
+
+It is simple (both intuitively and computationally), fast, performs well with small amounts of training data, and scales well to large data sets. The greatest weakness of the naïve Bayes classifier is that it relies on an often-faulty assumption of equally important and independent features which results in biased posterior probabilities. Although this assumption is rarely met, in practice, this algorithm works surprisingly well and accurate; however, on average it rarely can compete with the accuracy of advanced tree-based methods (random forests & gradient boosting machines) but is definitely worth having in our toolkit.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# possible tuning grid
+# tuninGrid = data.frame(fL=c(0,0.5,1.0), usekernel = TRUE, adjust=c(0,0.5,1.0))
+set.seed(modelSeed)
+trainDataCopy = mutate(trainData, Churn = as.factor(ifelse(Churn==1, "no", "yes")))
+testDataCopy = mutate(testData, Churn = as.factor(ifelse(Churn==1, "no", "yes")))
+ctrl = trainControl(method="cv", number = 5, 
+    # Estimate class probabilities
+    classProbs = T,
+    # Evaluate performance using the following function
+    summaryFunction = twoClassSummary)
+
+naiveBayesModel = caret::train(as.formula(paste('Churn ~', selectedPredictorsPlus)), 
+   data = trainDataCopy, method = "nb", metric="ROC", trControl = ctrl)
+
+pred.naiveBayesModel.prob = predict(naiveBayesModel, newdata = testDataCopy, type="prob")
+pred.naiveBayesModel.raw = predict(naiveBayesModel, newdata = testDataCopy )
+
+roc.naiveBayesModel = pROC::roc(testDataCopy$Churn, 
+                     as.vector(ifelse(pred.naiveBayesModel.prob[,"yes"] >0.5, 1,0)) )
+auc.naiveBayesModel = pROC::auc(roc.naiveBayesModel)
+naiveBayesModel
+```
+
+```{r}
+confusionMatrix(data = pred.naiveBayesModel.raw, testDataCopy$Churn)
+```
+
+```{r plot_nb_ROC,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Naive Bayes Model AUC and ROC Curve", out.width="1.1\\linewidth"}
+plot.roc(roc.naiveBayesModel, print.auc = T, auc.polygon = T, col = mainPalette[2] , print.thres = "best" )
+```
+
+```{r include=FALSE}
+rm(trainDataCopy,testDataCopy,ctrl)
+```
+
+## Random Forest Model
+
+Random Forest is also considered as a very handy and easy to use algorithm, because it’s default hyperparameters often produce a good prediction result. Random Forest adds additional randomness to the model, while growing the trees. Instead of searching for the most important feature while splitting a node, it searches for the best feature among a random subset of features. This results in a wide diversity that generally results in a better model. The main limitation of Random Forest is that a large number of trees can make the algorithm to slow and ineffective for real-time predictions. In general, these algorithms are fast to train, but quite slow to create predictions once they are trained.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+set.seed(modelSeed)
+trainDataCopy = mutate(trainData, Churn = as.factor(ifelse(Churn==1, "no", "yes")))
+testDataCopy = mutate(testData, Churn = as.factor(ifelse(Churn==1, "no", "yes")))
+ctrl = trainControl(method = "cv", number = 3, # it takes forever for 10 - fold 
+    # Estimate class probabilities
+    classProbs = T,
+    # Evaluate performance using the following function
+    summaryFunction = twoClassSummary)
+ptm_rf <- proc.time()
+randomForestModel = caret::train(as.formula(paste('Churn ~', selectedPredictorsPlus)), 
+   data = trainDataCopy, method = "rf", metric="ROC", trControl = ctrl)
+proc.time() - ptm_rf
+pred.randomForestModel.prob = predict(randomForestModel, newdata = testDataCopy, type="prob")
+pred.randomForestModel.raw = predict(randomForestModel, newdata = testDataCopy )
+
+roc.randomForestModel = pROC::roc(testDataCopy$Churn,  
+                                  as.vector(ifelse(pred.randomForestModel.prob[,"yes"] >0.5, 1,0)) )
+auc.randomForestModel = pROC::auc(roc.randomForestModel)
+randomForestModel
+```
+
+```{r}
+confusionMatrix(data = pred.randomForestModel.raw, testDataCopy$Churn)
+```
+
+```{r plot_rf_ROC,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Random Forest Model AUC and ROC Curve", out.width="1.1\\linewidth"}
+plot.roc(roc.randomForestModel, print.auc = T, auc.polygon = T, col = mainPalette[3] , print.thres = "best" )
+```
+
+```{r include=FALSE}
+rm(trainDataCopy,testDataCopy,ctrl)
+```
+
+## Logistic Regression Model
+
+Logistic regression is an efficient, interpretable and accurate method, which fits quickly with minimal tuning. Logistic regression prediction accuracy will benefit if the data is close to Gaussian distribution. Thus we apply addition transformation to the training data set. We will also be employing 5-fold cross-validation resampling procedure to improve the model. In addition to the above we are going to convert *Location* categorical value to numeric data type. We could have used dummy encoding but having 49 locations such approach does not seem beneficial.
+```{r include=FALSE, message=FALSE, warning=FALSE}
+set.seed(modelSeed)
+
+
+trainDataCopy = subset(trainData)
+testDataCopy = subset(testData )
+
+ctrl = trainControl(
+  # 5-fold CV
+  method="cv", number = 5,  
+  savePredictions = T)
+
+logRegModel = caret::train(as.formula(paste('Churn ~', selectedPredictorsPlus)),
+        data = trainDataCopy, method="glm", family = binomial(link = "logit"), 
+        trControl = ctrl, preProc = c("BoxCox"))
+
+pred.logRegModel.raw = predict(logRegModel, newdata =  testDataCopy)
+pred.logRegModel.prob = predict(logRegModel, newdata =  testDataCopy, type = "prob")
+roc.logRegModel = pROC::roc(testDataCopy$Churn, as.vector(ifelse(pred.logRegModel.prob[,"1"] >0.5, 1,0)))
+auc.logRegModel = pROC::auc(roc.logRegModel)
+
+logRegModel
+# save the model. Do it once.
+# save(logRegModel, file="../data/logRegModel.Rdata")
+```
+```{r}
+confusionMatrix(data = pred.logRegModel.raw, testDataCopy$Churn)
+```
+
+```{r plot_logReg_ROC,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Logistic Regression Model AUC and ROC Curve", out.width="1.1\\linewidth"}
+plot.roc(roc.logRegModel, rint.auc = T, auc.polygon = T, col = mainPalette[4] , print.thres = "best" )
+```
+
+
+```{r include=FALSE}
+rm(trainDataCopy,testDataCopy,ctrl)
+```
+
+## Model Comparison
+
+Now it is time to compare the models side by side and pick a winner.
+
+```{r plot_model_comp, fig.align="center", fig.cap="Model AUC Comparison", message=FALSE, warning=FALSE, echo=FALSE, out.width="1.1\\linewidth"}
+modelsFace2Face = data.frame(model=c("logRegModel", "decisionTreeModel",
+        "naiveBayesModel", "randomForestModel"),
+        auc=c(auc.logRegModel, auc.decisionTreeModel, auc.naiveBayesModel, auc.randomForestModel))
+modelsFace2Face = modelsFace2Face[order(modelsFace2Face$auc, decreasing = T),]
+modelsFace2Face$model = factor(modelsFace2Face$model, levels = modelsFace2Face$model)
+
+ggplot(data = modelsFace2Face, aes(x=model, y=auc)) +
+  geom_bar(stat="identity", fill=mainPalette[3], colour=mainPalette[3], alpha = 0.5)
+
+print(modelsFace2Face)
+```
+
+#### AUC - ROC perfomance
+
+AUC stands for Area under the ROC Curve and ROC for Receiver operating characteristic curve. This is one of the most important KPIs of the classification algorithms. These two metrics measure how well the models distinguishing between the classes. The higher AUC the better model predicts positive and negative outcome. 
+
+Figures \ref{fig:plot_decTree_ROC}, \ref{fig:plot_nb_ROC}, \ref{fig:plot_rf_ROC}, \ref{fig:plot_logReg_ROC} and accompanying data show that on the test data set all the models demonstrated very close resuts. Random Forest has the highest overall accuracy (85%) but performs poorly predicting rainy days (65%), thus the balanced accuracy is lower (about 78%). 
+
+Naive Bayes has lesser overall accuracy in comparison with the Random Forest but is more balanced, demonstrating consistent power to predict rainy and sunny days with almost equal accuracy. It scored over 78% on the  balanced accuracy.
+
+Logistic regression model scores the best having the highest AUC and all other metrics. It's balanced accuracy is 80%.
+
+The Decision Tree performance is close to the other models with the balanced accuracy of 76%.
+
+
+#### Model interpretibility
+
+Logistic Regression, Decision Tree and Naive Bayes are all highly interpreatable models. It is easy to explain to the business what impact each input parameter has. The decision tree could be visualized (provided if it is not too large). 
+
+Random Forest on the other hand is a black-box model, complex algorithm which is difficult to explain in simple terms.
+
+#### Data Preparation
+
+Decision Tree, Random Forest and Naive Bayes can deal with missing data, outliers, numeric and alphanumeric values. Simply speaking they are not very demanding for data quality. It would be interesting to see how they perform on the original data set without data cleaning. But this is subject of another research...
+
+Logistic regression does require conversion of alphanumeric values to numeric, struggles dealing with the outliers and performs best when fitted with the data that have normal distribution. 
+
+#### Verdict
+
+Despite sensitivity to data quality Logistic Regression outperforms other models in all other major categories. This is our choice!
+
+
+# Model Deployment
+
+Without a doubt it would be a stretch to compare our model to the production numerical weather prediction models. But we do believe it might have a real live application as an educational tool. The model can demonstrate how various weather elements affect the probability of the rain.
+
+It is simple to understand and deploy. The model does not require frequent updates because the weather patterns tend to be stable for a given geographical area (though this statement might be compromised in the context of the global warming). The model would benefit greatly if more complete data was available. Recall that we had to impute a lot of missing values.
+
+
+# Conclusion
+
+Through exploring weather observations collected by 49 stations in Australia from 2007 to 2017 we selected and tuned a model to predict a rainy day tomorrow employing current day observations and historical data.
+
+We commenced our research analyzing and understanding available data and geography of the weather stations. Then we identified the missing data, its distribution and feasibility of imputing it. We applied sophisticated data imputation algorithm to attack the problem. We continued our research selecting the most impactful data attributes to use as an input for our future model. Again we apply the feature identification algorithm to do the job.
+
+When the data preparation phase was finished we picked and analysed four different classification models: Decision Tree, Naive Bayes, Random Forest and Logistic Regression. We conducted comparative analysis of the models, reviewed their strength and weaknesses. We fitted each model using K-fold cross-validation technique. Subsequently we evaluated performance of each model applying them to the test data set and comparing AUC - ROC and balanced accuracy metrics. 
+
+Finally we moved to identifying a winning model. In order to so we reviewed each model from different angles namely:
+
+* performance
+* interpretability
+* data quality sensitivity and data preparation effort
+
+The winning model scored the highest in the majority of the categories. It was Logistic Regression, which we employed to build a Shiny App Web application.
+
+We consider the project to be a success. 
+\newpage
 
 \bibliography{RJreferences}
+
+# Note from the Authors
+
+This file was generated using [_The R Journal_ style article template](https://github.com/rstudio/rticles), additional information on how to prepare articles for submission is here - [Instructions for Authors](https://journal.r-project.org/share/author-guide.pdf). The article itself is an executable R Markdown file that could be [downloaded from Github](https://github.com/ivbsoftware/big-data-final-2/blob/master/docs/R_Journal/big-data-final-2/) with all the necessary artifacts.
+
