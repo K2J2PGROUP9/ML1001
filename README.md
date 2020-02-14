@@ -16,7 +16,7 @@ To run the project code:
 
 ## Shiny App
 
-URL: [Telco customer churn Analysis](https://li-ketao.shinyapps.io/K2J2PGROUP9-ML1001/)
+URL: [Telco customer churn Analysis](https://li-ketao.shinyapps.io/customer-churn/)
 
 To run the application locally, just execute:
 ```r
