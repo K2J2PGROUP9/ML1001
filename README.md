@@ -1,13 +1,24 @@
-# ML1001
-How to use it?
+## ML1000-1
+York University. ML1000 - Machine Learning in Business Context. Assignment #1 - Classification Problem
 
-1 download this repo to your local computer.
+## Project Structure
 
-2 open this project using your rstudio
+* Project presentation document: **telco_customer_churn**.  
+* **data** folder contains the project data sets and trained model file. 
+* **source** folder contains the script that generates the report.
+* **rsconnect** folder includes the shiny app deployment files.
 
-3 execute the following commands for Latex installation.
+To run the project code:
 
-		install.packages('tinytex')
-		tinytex::install_tinytex() 
-		
-4 press knit to generate the pdf document.
+* set the working directory to *./source*
+* open *main.Rmd*. Please make sure that you install all required packages; they are listed at the beginning of the script. It is assumed that all R Markdown dependencies are satisfied, including the libraries that do conversion to the *PDF* format. Execute the script.
+
+
+## Shiny App
+
+URL: [Telco customer churn Analysis](https://li-ketao.shinyapps.io/K2J2PGROUP9-ML1001/)
+
+To run the application locally, just execute:
+```r
+rmarkdown::run("customer_churn.rmd")
+```
