@@ -1,0 +1,13 @@
+name: customer-churn
+title: customer-churn
+username:
+account: li-ketao
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1805753
+bundleId: 2799784
+url: https://li-ketao.shinyapps.io/customer-churn/
+when: 1581645375.29509
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: customer_churn.html
