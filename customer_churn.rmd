@@ -1,0 +1,204 @@
+---
+title: "Telco Customer Churn Analytics"
+output:
+  flexdashboard::flex_dashboard: 
+runtime: shiny_prerendered
+---
+
+```{r setup}
+
+library(flexdashboard)
+library(billboarder)
+library(tidyverse)
+library(tidyquant)
+library(corrr)
+library(scales)
+library(lime)
+library(glue)
+library(rsample)
+library(recipes)
+library(yardstick)
+library(readr)
+library(ggplot2)
+library(forcats)
+
+
+load('data/logRegModel.Rdata')
+
+
+customerData1 = read.csv("data/customer_churn.csv", header = TRUE, na.strings = c("NA","","#NA"),sep=",")
+
+test_tbl_with_ids <- customerData1
+
+```
+
+Customer Scorecard {data-orientation=rows}
+=============================================================================
+
+Sidebar {.sidebar}
+-----------------------------------------------------------------------------
+
+#### Customer ID
+
+```{r}
+selectInput('customer_id', NULL, unique(test_tbl_with_ids$customerID))
+```
+
+#### Churn Risk
+
+```{r}
+gaugeOutput("churn_risk", width = "220px", height = "130px")
+```
+
+```{r, context="server"}
+output$churn_risk <- renderGauge({
+  
+  req(input$customer_id)
+        
+  selected_customer_id <- test_tbl_with_ids$customerID[1]
+  selected_customer_id <- input$customer_id
+  
+  customer_tbl <- test_tbl_with_ids %>% 
+    filter(customerID == selected_customer_id)
+  
+  gauge(
+    round(customer_tbl$churn_prob * 100, digits = 1), 
+    #round(customer_tbl_churn_prob * 100, digits = 1),
+    min = 0, 
+    max = 100,
+    gaugeSectors(
+      success = c(0,33),
+      warning = c(33, 66),
+      danger = c(67,100)
+    ),
+    symbol = "%"
+  )
+})
+```
+Strategies
+-----------------------------------------------------------------------------
+
+```{css}
+.value-box .value-output,
+.value-box .caption {
+  font-size: 24px;
+}
+```
+
+### Main Strategy
+
+```{r}
+valueBoxOutput("main")
+```
+
+```{r, context="server"}
+output$main <- renderValueBox({
+  
+   req(input$customer_id)
+        
+  selected_customer_id <- test_tbl_with_ids$customerID[1]
+  selected_customer_id <- input$customer_id
+  
+  customer_tbl <- test_tbl_with_ids %>% 
+      filter(customerID == selected_customer_id)
+  
+  if (customer_tbl$tenure <= 9) {
+      main_strategy <- 'Retain until one year'
+  } else if (customer_tbl$tenure > 9 | customer_tbl$Contract == 'Month-to-month') {
+      main_strategy <- 'Upsell to annual contract'
+  } else if (customer_tbl$tenure > 12 & customer_tbl$InternetService == 'No') {
+      main_strategy <- 'Offer internet service'
+  } else if (customer_tbl$tenure > 18 & customer_tbl$MonthlyCharges > 50) {
+      main_strategy <- 'Offer discount in monthly rate'
+  } else if (customer_tbl$tenure > 12 & 
+             customer_tbl$Contract != 'Month-to-month' & 
+             ((customer_tbl$OnlineBackup == 'No' & 
+               customer_tbl$OnlineSecurity == 'No' & 
+               customer_tbl$DeviceProtection == 'No' & 
+               customer_tbl$TechSupport == 'No' & 
+               customer_tbl$StreamingMovies == 'No') 
+              | customer_tbl$PhoneService == 'No')) {
+      main_strategy <- 'Offer additional services'
+  } else {
+      main_strategy <- 'Retain and maintain'
+  }
+  valueBox("Main Strategy", caption = main_strategy, color = "info")
+})
+```
+
+```{js}
+$(document).on("shiny:sessioninitialized", function() {
+  $("#section-strategies .value-box").hover( 
+    function(e) {
+      var id = $(this).find(".shiny-valuebox-output").attr('id');
+      Shiny.onInputChange("strategy_box_hover", id); 
+    },
+    function(e) {
+      Shiny.onInputChange("strategy_box_hover", 'none'); 
+    }
+  );
+});
+
+```
+
+Customer Analysis
+-----------------------------------------------------------------------------
+
+### Customer Details {data-width=33}
+
+```{css}
+table.dataTable thead {
+  display:none;
+}
+table.dataTable tr.selected td, 
+table.dataTable td.selected {
+  background-color: #c3dbf7 !important;
+  border-color: #c3dbf7 !important;
+}
+```
+
+```{r}
+DT::dataTableOutput('customer_info_tbl')
+```
+
+```{r, context="server"}
+output$customer_info_tbl <- DT::renderDataTable({
+        
+  req(input$customer_id)
+  
+  selected_customer_id <- test_tbl_with_ids$customerID[1]
+  selected_customer_id <- input$customer_id
+  
+  customer_info <- test_tbl_with_ids %>% 
+      filter(customerID == selected_customer_id) %>% 
+      mutate(tenure = paste0(tenure, ifelse(tenure == 1, ' Month', ' Months'))) %>% 
+      select(customer_feature_vars) %>% 
+      gather(metric, value)
+  
+  DT::datatable(
+    customer_info, 
+    rownames = NULL, 
+    options = list(
+        dom = 't', 
+        bSort = FALSE, 
+        paging = FALSE
+    )
+  )
+})
+
+observeEvent(input$strategy_box_hover, {
+    
+  strategy_hover <- input$strategy_box_hover
+        
+  if (strategy_hover == 'none') {
+    row_indices <- 0
+  } else {
+    strategy_features <- get(paste0(strategy_hover, '_vars'))
+    row_indices <- match(strategy_features, customer_feature_vars)
+  }
+  
+  DT::dataTableProxy('customer_info_tbl') %>% 
+    DT::selectRows(row_indices)
+})
+```
+
