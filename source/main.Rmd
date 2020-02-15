@@ -17,7 +17,7 @@ author:
     affiliation: York University
     email:  priyanka181994@gmail.com    
 abstract: >
-  An abstract of less than 150 words.
+  Customer churn is a big challenge for large companies,especially in the highly competitive telecom industry. Due to the effect on the revenues of the companies, they are seeking to find ways to predict potential customer to churn. Therefore, identifying the factors that lead to customer churn is very important to take necessary actions to avoid this churn.Our work is to develop a churn prediction model which helps telecom operators to predict customers who are most likely subject to churn.
 
 output:
   rticles::rjournal_article:
@@ -45,6 +45,8 @@ library(party) # classification tree
 library(klaR) # naive bayes
 library(xtable) # tabular data formatting 
 library(caret) # predictive models
+library(Lahman)
+library(correlationfunnel)
 
 # Clean all variables that might be left by other script to avoid collusion
 rm(list=ls(all=TRUE))
@@ -55,8 +57,7 @@ options(xtable.comment = FALSE)
 
 # pick palettes
 mainPalette = brewer.pal(8,"Dark2")
-# set a sample size
-SampleSize = 3000
+
 ```
 
 ```{r global_options, include=FALSE}
@@ -67,7 +68,7 @@ knitr::opts_chunk$set(fig.pos = 'H')
 
 ## Background
 
-In an industry as competitive as Telecom, leading companies know that the key to success is not just about acquiring new customers, but rather, retaining existing ones. But how do you know which customers are at risk and why, and which negative experiences and interactions have the biggest impact on churn across touchpoints and channels over time
+In an industry as competitive as Telecom, leading companies know that the key to success is not just about acquiring new customers, but rather, retaining existing ones. But how do you know which customers are at risk and why, and which negative experiences and interactions have the biggest impact on churn across touchpoints and channels over time.
 
 
 ## Objective
@@ -76,7 +77,7 @@ The objective of this research is to find a supervised, binary classification mo
 
 # Data Analysis
 
-The data set we are going to use for our research contains  customer’s attributes. There are over 7044 records. It has been sourced from [Kaggle](https://www.kaggle.com/blastchar/telco-customer-churn)
+The data set we are going to use for our research contains  customer’s attributes. There are over 7044 records. It has been sourced from [Kaggle](https://www.kaggle.com/blastchar/telco-customer-churn).
 
 
 ## Data Dictionary
@@ -113,7 +114,8 @@ Churn                  | Whether the customer churned or not (Yes or No)
 Let's take a close look at the data set.
 
 ```{r message=FALSE, warning=FALSE}
-customerData = read.csv("../data/WA_Fn-UseC_-Telco-Customer-Churn.csv", header = TRUE, na.strings = c("NA","","#NA"),sep=",")
+customerData = read.csv("../data/WA_Fn-UseC_-Telco-Customer-Churn.csv", 
+                        header = TRUE, na.strings = c("NA","","#NA"),sep=",")
 
 ```
   
@@ -134,8 +136,9 @@ print (xtable(customerData[1:10,13:21],
   scalebox = .6)
 ```
 
+
 ```{r}
-#DATA EXPLORATION
+
 
 #To see the names of the rows in the dataset
 names(customerData)
@@ -157,116 +160,277 @@ factorColumns <- select_if(customerData, is.factor)
 summary(factorColumns)
 ```
 
-#Make a chart for each factor type column.
+
+### Continuous Variables
+For continuous variables, let's check for their distributions.
+
+```{r echo= FALSE, warning = FALSE, message=FALSE}
+ggplot(data = customerData, aes(MonthlyCharges, color = Churn))+
+  geom_freqpoly(binwidth = 5, size = 1)
+```
+
+The number of current customers with MonthlyCharges below $25 is extremly high. For the customers with Monthlycharges greater than $30, 
+the distributions are similar between who churned and who did not churn.
+
+```{r echo= FALSE, warning = FALSE, message=FALSE}
+ggplot(data = customerData, aes(TotalCharges, color = Churn))+
+  geom_freqpoly(binwidth = 200, size = 1)
+```
+
+The distribution of TotalCharges is highly positive skew for all customers no matter whether they churned or not. 
+
+```{r echo= FALSE, warning = FALSE, message=FALSE}
+ggplot(data = customerData, aes(tenure, colour = Churn))+
+  geom_freqpoly(binwidth = 5, size = 1)
+```
+
+The distributions for tenure are very different between customers who churned and who didn't churn. For customers who churned, the distribution is positve skew, which means customers who churned are more likely to cancel the service in the first couple of months. For current customers who didn't churn, there are two spikes. The second spike is much more drastic than the first one, which means a large group of current customers have been using the service more than 5 years.
+There is no obvious outliers for 3 numeric variables.
+
+
+### Missing Data
+   From the above summary, we can observe that 11 TotalChargesNA. Considering the number of missing data is quite small, we can remove them directly. 
+
+### Data correlation and other observations
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(gender, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer gender Status", 
+       x = "gender", 
+       y = "Count")
+
+```
+
+
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(Partner, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer Partner Status", 
+       x = "Does the Customer have a Partner?", 
+       y = "Count")
+
+```
+
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(Dependents, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer Dependents Status", 
+       x = "Dependents", 
+       y = "Count")
+
+```
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(PhoneService, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer PhoneService Status", 
+       x = "PhoneService", 
+       y = "Count")
+
+```
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(MultipleLines, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer MultipleLines Status", 
+       x = "MultipleLines", 
+       y = "Count")
+
+```
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(InternetService, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer InternetService Status", 
+       x = "InternetService", 
+       y = "Count")
+
+```
+
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(OnlineSecurity, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer OnlineSecurity Status", 
+       x = "OnlineSecurity", 
+       y = "Count")
+
+```
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(OnlineBackup, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer OnlineBackup Status", 
+       x = "OnlineBackup", 
+       y = "Count")
+
+```
+
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(DeviceProtection, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer DeviceProtection Status", 
+       x = "DeviceProtection", 
+       y = "Count")
+
+```
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(TechSupport, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer TechSupport Status", 
+       x = "TechSupport", 
+       y = "Count")
+
+```
+
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(StreamingTV, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer StreamingTV Status", 
+       x = "StreamingTV", 
+       y = "Count")
+
+```
+
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(StreamingMovies, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer StreamingMovies Status", 
+       x = "StreamingMovies", 
+       y = "Count")
+
+```
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(Contract, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer Contract Status", 
+       x = "Contract", 
+       y = "Count")
+
+```
+
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(factorColumns, aes(PaperlessBilling, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer PaperlessBilling Status", 
+       x = "PaperlessBilling", 
+       y = "Count")
+
+```
+
 
 ```{r test1,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test1 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=gender)) +
-                        geom_bar()
+ggplot(factorColumns, aes(PaymentMethod, fill = Churn)) + 
+  geom_bar() +
+  labs(title = "Customer PaymentMethod Status", 
+       x = "PaymentMethod", 
+       y = "Count")
 
 ```
 
-```{r test2,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test2 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=Partner)) +
-        geom_bar()
+
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(customerData, aes(tenure, fill = Churn)) + 
+  geom_histogram() +
+  labs(title = "Customer Tenure Histogram", 
+       x = "tenure", 
+       y = "Count")
+
 ```
 
-```{r test3,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test3 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=Dependents)) +
-        geom_bar()
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+
+ggplot(customerData, aes(SeniorCitizen, fill = Churn)) + 
+  geom_histogram() +
+  labs(title = "SeniorCitizen Histogram",
+       x = "SeniorCitizen", 
+       y = "Count")
+
+
 ```
 
-```{r test4,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test4 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=PhoneService)) +
-        geom_bar()
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+
+ggplot(customerData, aes(MonthlyCharges, fill = Churn)) + 
+  geom_histogram() +
+  labs(title = "Monthly Charges Histogram",
+       x = "Monthly Charge to Customer", 
+       y = "Count")
+
 ```
 
-```{r test5,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test5 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=MultipleLines)) +
-        geom_bar()
-```
+```{r ,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap=" ", out.width="1.1\\linewidth"}
+ggplot(customerData, aes(TotalCharges, fill = Churn)) + 
+  geom_histogram() +
+  labs(title = "TotalCharges Histogram",
+       x = "TotalCharges", 
+       y = "Count")
 
-```{r test6,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test6 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=InternetService)) +
-        geom_bar()
-```
-
-```{r test7,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test7 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=OnlineSecurity)) +
-        geom_bar()
-```
-
-
-
-```{r test8,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test8 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=OnlineBackup)) +
-        geom_bar()
-```
-
-
-```{r test9,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test9 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=DeviceProtection)) +
-        geom_bar()
 ```
 
 
-```{r test10,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test10 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=TechSupport)) +
-        geom_bar()
+General Insights From Initial Data Exploration
+These are simple observations made by looking at the above charts.
+
+-Customers with a partner or dependents are much less likely to cancel their service -The longer a customer’s tenure, the less likely they are to cancel 
+-Customers with fiber optic internet service are especially likely to cancel -Customers on month-to-month contracts are especially likely to cancel 
+-Customers who use paperless billing are more likely to cancel 
+-Customers who pay by electronic check are more likely to cancel
+
+The last step is to evaluate the correlation between predictor variables. Using a cut-off point of .6 we can say that there is a high level of correlation between the variables tenure, monthly charges, total charges and total services. These will need to be accounted before entering further modelling.
+ 
+
+```{r echo=TRUE}
+
+customer_churn_tbl = read.csv("../data/WA_Fn-UseC_-Telco-Customer-Churn.csv" )
+data("customer_churn_tbl")
+
+
+customer_churn_binarized_tbl <- customer_churn_tbl %>%
+  dplyr::select(-customerID) %>%
+  mutate(TotalCharges = ifelse(is.na(TotalCharges), MonthlyCharges, TotalCharges)) %>%
+  binarize(n_bins = 5, thresh_infreq = 0.01, name_infreq = "OTHER", one_hot = TRUE)
+
+customer_churn_corr_tbl <- customer_churn_binarized_tbl %>%
+  correlate(Churn__Yes)
+
+customer_churn_corr_tbl
+
+customer_churn_corr_tbl %>%
+  plot_correlation_funnel()
+
+
+
+
+
 ```
 
+We can see that the following features are correlated with Churn:
 
-```{r test11,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test11 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=StreamingTV)) +
-        geom_bar()
-```
+“Month to Month” Contract Type
+No Online Security
+No Tech Support
+Customer tenure less than 6 months
+Fiber Optic internet service
+Pays with electronic check
 
+We can also see that the following features are correlated with Staying (No Churn):
 
-```{r test12,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test12 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=StreamingMovies)) +
-        geom_bar()
-```
+“Two Year” Contract Type
+Customer Purchases Online Security
+Customer Purchases Tech Support
+Customer tenure greater than 60 months (5 years)
+DSL internet service
+Pays with automatic credit card
 
-```{r test13,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test13 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=Contract)) +
-        geom_bar()
-```
-
-
-```{r test14,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test14 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=PaperlessBilling)) +
-        geom_bar()
-```
-
-
-```{r test15,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test15 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=PaymentMethod)) +
-        geom_bar()
-```
-
-
-```{r test16,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test16 ", out.width="1.1\\linewidth"}
-ggplot(factorColumns, aes(x=Churn)) +
-        geom_bar()
-```
-
-#As we can see in the continues' summary, there are 11 NA's in the Totalcharges column and some
-#outliers in Monthlycharges and TotalCharges.
-# Let's take a look of those columns in a graph to better understanding
-
-```{r test17,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test17 ", out.width="1.1\\linewidth"}
-ggplot(continues, aes(x=MonthlyCharges)) +
-        geom_density(alpha= .2, fill="#FF6666")
-```
-
-#There is no normal distribution in Monthlycharges
-
-#Let's see now Totalchrges
-```{r test18,  echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.cap="Test18 ", out.width="1.1\\linewidth"}
-ggplot(continues, aes(x=TotalCharges)) +
-        geom_density(alpha= .2, fill="#FF6666")
-```
-
-#Can we make a hypothesis about the relation of charges total and monthly with the client churn?
 
 ```{r echo=TRUE}
 customerData = customerData %>%filter(complete.cases(.)) 
@@ -277,8 +441,7 @@ customerData = subset(customerData,select = -customerID)
 
 # Modeling and Evalutation
 
-Finally we have reached the stage where we can start training and evaluating classification models. At this point we have clear understanding of our data. We have gotten rid of the features that did not present much value. We have filled the gaps in our data set employing sophisticated imputation technique.
-
+Finally we have reached the stage where we can start training and evaluating classification models. At this point we have clear understanding of our data. We have gotten rid of the features that did not present much value.
 ## Feature Selection
 
 
@@ -336,7 +499,7 @@ plot(rfePrediction, type=c("g", "o"))
 ```
 
 
-Figure \ref{fig:plot_feature_selection} illustrates that the accuracy practically flattens out when a number of predictors reaches 8. The accuracy improves a bit more when a number of features reaches 15 but the gain is negligible. Here is the list of features ordered by importance. We take first nine for model training.
+Figure \ref{fig:plot_feature_selection} illustrates that the accuracy practically flattens out when a number of predictors reaches 8. The accuracy improves a bit more when a number of features reaches 8 but the gain is negligible. Here is the list of features ordered by importance. We take first nine for model training.
 
 ```{r echo=FALSE}
 print(predictors(rfePrediction))
@@ -576,29 +739,20 @@ Logistic Regression, Decision Tree and Naive Bayes are all highly interpreatable
 
 Random Forest on the other hand is a black-box model, complex algorithm which is difficult to explain in simple terms.
 
-#### Data Preparation
-
-Decision Tree, Random Forest and Naive Bayes can deal with missing data, outliers, numeric and alphanumeric values. Simply speaking they are not very demanding for data quality. It would be interesting to see how they perform on the original data set without data cleaning. But this is subject of another research...
-
-Logistic regression does require conversion of alphanumeric values to numeric, struggles dealing with the outliers and performs best when fitted with the data that have normal distribution. 
-
-#### Verdict
-
-Despite sensitivity to data quality Logistic Regression outperforms other models in all other major categories. This is our choice!
 
 
 # Model Deployment
 
-Without a doubt it would be a stretch to compare our model to the production numerical weather prediction models. But we do believe it might have a real live application as an educational tool. The model can demonstrate how various weather elements affect the probability of the rain.
+The model can demonstrate how various customer elements affect the probability of the churn.
 
-It is simple to understand and deploy. The model does not require frequent updates because the weather patterns tend to be stable for a given geographical area (though this statement might be compromised in the context of the global warming). The model would benefit greatly if more complete data was available. Recall that we had to impute a lot of missing values.
+It is simple to understand and deploy. 
 
 
 # Conclusion
 
-Through exploring weather observations collected by 49 stations in Australia from 2007 to 2017 we selected and tuned a model to predict a rainy day tomorrow employing current day observations and historical data.
+Through exploring customer churn dataset,we selected and tuned a model to predict whether one customer could churn.
 
-We commenced our research analyzing and understanding available data and geography of the weather stations. Then we identified the missing data, its distribution and feasibility of imputing it. We applied sophisticated data imputation algorithm to attack the problem. We continued our research selecting the most impactful data attributes to use as an input for our future model. Again we apply the feature identification algorithm to do the job.
+We commenced our research analyzing and understanding available data . Then we identified the missing data, its distribution and feasibility of imputing it. We continued our research selecting the most impactful data attributes to use as an input for our future model. We apply the feature identification algorithm to do the job.
 
 When the data preparation phase was finished we picked and analysed four different classification models: Decision Tree, Naive Bayes, Random Forest and Logistic Regression. We conducted comparative analysis of the models, reviewed their strength and weaknesses. We fitted each model using K-fold cross-validation technique. Subsequently we evaluated performance of each model applying them to the test data set and comparing AUC - ROC and balanced accuracy metrics. 
 
