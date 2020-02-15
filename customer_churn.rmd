@@ -23,7 +23,7 @@ library(ggplot2)
 library(forcats)
 
 
-load('data/logRegModel.Rdata')
+#load('data/logRegModel.Rdata')
 
 
 customerData1 = read.csv("data/customer_churn.csv", header = TRUE, na.strings = c("NA","","#NA"),sep=",")
