@@ -10,8 +10,8 @@ York University. ML1000 - Machine Learning in Business Context. Assignment #1 - 
 
 To run the project code:
 
-* set the working directory to *./source*
-* open *main.Rmd*. Please make sure that you install all required packages; they are listed at the beginning of the script. It is assumed that all R Markdown dependencies are satisfied, including the libraries that do conversion to the *PDF* format. Execute the script.
+* Set the working directory to *./source*
+* Open *main.Rmd*. Please make sure that you install all required packages; they are listed at the beginning of the script. It is assumed that all R Markdown dependencies are satisfied, including the libraries that do conversion to the *PDF* format. Execute the script.
 
 
 ## Shiny App
